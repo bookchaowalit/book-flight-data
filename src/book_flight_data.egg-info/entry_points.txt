@@ -1,0 +1,3 @@
+[console_scripts]
+book-flight-data = book_flight.ingest:_cli_main
+book-flight-data-api = book_flight.api:main

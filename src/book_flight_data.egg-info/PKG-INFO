@@ -1,0 +1,8 @@
+Metadata-Version: 2.4
+Name: book-flight-data
+Version: 0.1.0
+Summary: Flight price data ingestion and CLI.
+Requires-Python: >=3.11
+Requires-Dist: httpx>=0.27
+Requires-Dist: beautifulsoup4>=4.12
+Requires-Dist: python-dotenv>=1.0
