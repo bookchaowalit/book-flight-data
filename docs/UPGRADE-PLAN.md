@@ -26,6 +26,7 @@ Score: 8/10 -> 8.5/10 — every provider capture shape is parsed from saved fixt
   `_tequila_time`; it now returns `None`.
 - Verified: `tests/test_edge_cases.py` (all 3 fail on the old code); full
   suite 43 passed; ruff 0.15.8 + 0.16.9.
+- Bumped the `[lake]` pin `68fb5a9` -> `4c24c66` (NDJSON/BOM/U+2028/double-decode fixes); 43 passed with the new package; ruff 0.15.8 + 0.16.9 clean.
 
 ## Done in this pass (pass 3)
 
