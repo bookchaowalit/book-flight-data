@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from . import config
+from . import quality
 
 
 def _load_shared():
@@ -166,6 +167,13 @@ def stable_flight_id(
     return ":".join(parts)
 
 
+def _non_negative_or_blank(value: Any) -> Any:
+    """Keep finite non-negative numbers as given; blank NaN/inf/negative/text."""
+    if value in ("", None):
+        return value
+    return value if quality.non_negative_number(value) is not None else ""
+
+
 def normalize_flight_record(
     flight: dict[str, Any],
     *,
@@ -216,8 +224,8 @@ def normalize_flight_record(
         "price": price,
         "price_thb": price,
         "currency": str(flight.get("currency") or currency),
-        "duration_hours": flight.get("duration_hours", 0),
-        "stops": flight.get("stops", 0),
+        "duration_hours": _non_negative_or_blank(flight.get("duration_hours", 0)),
+        "stops": _non_negative_or_blank(flight.get("stops", 0)),
         "url": str(flight.get("url") or ""),
         "itinerary_id": itin,
         "source_label": str(flight.get("source") or provider),
@@ -246,6 +254,10 @@ def flight_records_from_provider(
             flight, provider=provider, observed_at=observed, currency=currency
         )
         if not rec["origin"] or not rec["destination"]:
+            continue
+        # A fare must be a finite, positive number (NaN/inf/0/negative/text dropped).
+        price = quality.finite_number(rec["price"])
+        if price is None or price <= 0:
             continue
         rid = rec["id"]
         if dedupe:

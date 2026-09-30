@@ -1,6 +1,6 @@
 # Upgrade plan — book-flight-data
 
-Score: 7/10 -> 8/10 — lake tests now run standalone in CI via the pinned `[lake]` extra; remaining gaps are provider-parser fixtures and packaging polish.
+Score: 8/10 -> 8.5/10 — every provider capture shape is parsed from saved fixtures, price alerts fire again, ids are stable, bad fares never reach Bronze and projections are atomic; remaining gaps are packaging polish.
 
 ## Backlog
 
@@ -10,9 +10,29 @@ Score: 7/10 -> 8/10 — lake tests now run standalone in CI via the pinned `[lak
   the other book-*-data repos (same SHA everywhere).
 - P2: Add a `[project.optional-dependencies] dev` extra and a `[build-system]` table so
   `pip install -e ".[dev]"` is the single documented setup.
-- P1: Add a parser test for each provider capture shape using saved fixtures (no network).
+- P1: `run_live_ingest` uses host-local `datetime.now()` for the Tequila date window; use UTC
+  (or the origin airport's zone) so the window does not shift with the host.
+- P2: `load_previous_prices` keeps the last history row per route; compare against the
+  cheapest fare of the previous run instead.
 
-## Done in this pass (pass 2)
+## Done in this pass (pass 3)
+
+- Saved captures in `tests/pages/` drive `tests/test_provider_parsers.py`: Tequila JSON
+  (new pure `parse_tequila`), Firecrawl markdown JSON and a Skyscanner HTML page through
+  `fetch_skyscanner_html_raw` (script/nav/footer prices ignored).
+- Fixed: price alerts read history after this run appended to it (compared each price with
+  itself); Tequila airlines joined from a `set` made itinerary ids differ between runs;
+  Tequila times used host-local conversion; `parse_skyscanner` crashed on a bare `฿,` and
+  missed `฿ 12,450` with a space.
+- `valid_price` gates landed fares; `lake.flight_records_from_provider` drops non-finite or
+  non-positive fares and blanks bad duration/stops (new `quality` module).
+- CLI: `parse_routes` validates IATA pairs; `--days-ahead`/`--alert-drop-pct` checked.
+- New `fsutil` module: price CSV replaced atomically, history appended via atomic rewrite.
+- README Quick start uses `pip install -e ".[lake]"`; new "Data quality" section.
+- Verified: `pytest -q -rs` 37 passed, 0 skipped (was 25) with the `[lake]` venv; ruff
+  0.15.8 and 0.16.9 clean.
+
+## Done in pass 2
 
 - Added a `[lake]` extra pinning `solo-empire-data-lake` at `68fb5a9` (plus pyarrow/duckdb); CI
   installs `-e ".[lake]"`, asserts `data_lake` imports, and lake tests now run instead of skipping.

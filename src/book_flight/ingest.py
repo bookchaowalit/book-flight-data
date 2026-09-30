@@ -16,10 +16,11 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import os
 import re
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -60,6 +61,8 @@ try:
     from .policy import evaluate_provider, require_provider, external_writes_allowed
     from .store import seed_fixtures
     from . import lake as _lake
+    from .fsutil import atomic_append_csv, atomic_write_csv
+    from .quality import finite_number
 except ImportError:  # pragma: no cover
     _dp_config = None
     _lake = None
@@ -147,51 +150,62 @@ def fetch_kiwi_tequila_raw(
         )
         resp.raise_for_status()
         raw = getattr(resp, "content", None) or json.dumps(resp.json()).encode("utf-8")
-        data = resp.json()
-        flights = []
-        for flight in data.get("data", []):
-            flights.append(
-                {
-                    "origin": origin,
-                    "destination": destination,
-                    "price_thb": flight.get("price", 0),
-                    "currency": "THB",
-                    "airline": ",".join(
-                        set(r.get("airline", "") for r in flight.get("route", []))
-                    ),
-                    "departure": (
-                        datetime.fromtimestamp(flight.get("dTime", 0)).strftime(
-                            "%Y-%m-%d %H:%M"
-                        )
-                        if flight.get("dTime")
-                        else ""
-                    ),
-                    "return": (
-                        datetime.fromtimestamp(flight.get("aTime", 0)).strftime(
-                            "%Y-%m-%d %H:%M"
-                        )
-                        if flight.get("aTime")
-                        else ""
-                    ),
-                    "duration_hours": (
-                        round(flight.get("fly_duration", 0) / 3600, 1)
-                        if flight.get("fly_duration")
-                        else 0
-                    ),
-                    "stops": max(len(flight.get("route") or []) - 1, 0),
-                    "url": flight.get("deep_link", ""),
-                    "source": "Kiwi.com",
-                }
-            )
-        return raw, "application/json", flights
+        return raw, "application/json", parse_tequila(resp.json(), origin, destination)
     except Exception as e:  # noqa: BLE001
         print(f"  Warning: Tequila API failed for {origin}-{destination}: {e}")
         return b"", "application/json", []
 
 
+def _tequila_time(value: Any) -> str:
+    """Render a Tequila ``dTime``/``aTime`` epoch as ``YYYY-MM-DD HH:MM``.
+
+    Tequila encodes the airport-local wall time as epoch seconds, so it is
+    rendered with UTC arithmetic; a host-local conversion shifted it by the
+    host's offset.
+    """
+    seconds = finite_number(value)
+    if not seconds:
+        return ""
+    try:
+        return datetime.fromtimestamp(seconds, tz=timezone.utc).strftime("%Y-%m-%d %H:%M")
+    except (OverflowError, OSError, ValueError):
+        return ""
+
+
+def parse_tequila(data: Any, origin: str, destination: str) -> list[dict[str, Any]]:
+    """Normalize a Tequila ``/v2/search`` payload into flight dicts.
+
+    Airlines are sorted so the itinerary fingerprint (and record id) is stable
+    across processes (``set`` iteration order is not).
+    """
+    rows = data.get("data") if isinstance(data, dict) else None
+    flights = []
+    for flight in rows if isinstance(rows, list) else []:
+        if not isinstance(flight, dict):
+            continue
+        route = [r for r in flight.get("route") or [] if isinstance(r, dict)]
+        duration = finite_number(flight.get("fly_duration"))
+        flights.append(
+            {
+                "origin": origin,
+                "destination": destination,
+                "price_thb": flight.get("price", 0),
+                "currency": "THB",
+                "airline": ",".join(sorted({str(r.get("airline") or "") for r in route} - {""})),
+                "departure": _tequila_time(flight.get("dTime")),
+                "return": _tequila_time(flight.get("aTime")),
+                "duration_hours": round(duration / 3600, 1) if duration and duration > 0 else 0,
+                "stops": max(len(route) - 1, 0),
+                "url": flight.get("deep_link", ""),
+                "source": "Kiwi.com",
+            }
+        )
+    return flights
+
+
 def parse_skyscanner(markdown: str, origin: str, destination: str) -> list:
     flights = []
-    price_matches = re.findall(r"(?:฿|THB\s*)([\d,]+)", markdown)
+    price_matches = re.findall(r"(?:฿|THB)\s*(\d[\d,]*)", markdown)
     if price_matches:
         prices = [
             int(p.replace(",", ""))
@@ -303,6 +317,16 @@ def _projection_timestamp() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
+def _projection_rows(flights: list[dict], fieldnames: list[str], scraped: str) -> list[dict]:
+    return [{k: f.get(k, "") for k in fieldnames} | {"scraped_at": scraped} for f in flights]
+
+
+def valid_price(value: Any) -> bool:
+    """True for a finite, positive fare (NaN is truthy, so ``if price`` let it through)."""
+    number = finite_number(value)
+    return number is not None and number > 0
+
+
 def project_prices_csv(flights: list[dict], output_dir: Path) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     filepath = output_dir / "flight_prices.csv"
@@ -324,11 +348,7 @@ def project_prices_csv(flights: list[dict], output_dir: Path) -> Path:
         "scraped_at",
     ]
     scraped = _projection_timestamp()
-    with open(filepath, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
-        writer.writeheader()
-        for flight in flights:
-            writer.writerow({**flight, "scraped_at": scraped})
+    atomic_write_csv(filepath, fieldnames, _projection_rows(flights, fieldnames, scraped))
     print(f"  Projected {len(flights)} flights → {filepath}")
     return filepath
 
@@ -354,13 +374,7 @@ def project_history_csv(flights: list[dict], output_dir: Path) -> Path:
         "scraped_at",
     ]
     scraped = _projection_timestamp()
-    file_exists = filepath.exists()
-    with open(filepath, "a", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
-        if not file_exists:
-            writer.writeheader()
-        for flight in flights:
-            writer.writerow({**flight, "scraped_at": scraped})
+    atomic_append_csv(filepath, fieldnames, _projection_rows(flights, fieldnames, scraped))
     print(f"  Projected +{len(flights)} history rows → {filepath}")
     return filepath
 
@@ -527,7 +541,7 @@ def run_live_ingest(
             provider = cap["provider"]
             flights = cap["flights"]
             # Prefer cheapest for projection UX, but land all returned flights.
-            priced = [f for f in flights if f.get("price_thb")]
+            priced = [f for f in flights if valid_price(f.get("price_thb"))]
             if not priced:
                 print(f"{provider}: no prices")
                 continue
@@ -587,7 +601,7 @@ def run_live_ingest(
                     "source": f.get("source", provider),
                     "provider": provider,
                     "departure_date": str(f.get("departure") or "")[:10],
-                    "observed_at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "observed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                     "currency": f.get("currency") or "THB",
                 }
                 all_projection_rows.append(row)
@@ -599,10 +613,12 @@ def run_live_ingest(
         )
 
     if project_csv and all_projection_rows:
+        # Read prior prices before this run appends to history; reading them
+        # afterwards compared each price with itself and alerts never fired.
+        prev = load_previous_prices(output_dir)
         project_prices_csv(all_projection_rows, output_dir)
         if write_history:
             project_history_csv(all_projection_rows, output_dir)
-        prev = load_previous_prices(output_dir)
         print_alerts(all_projection_rows, prev, alert_drop_pct)
 
     print(f"\n  Landed batches: {len(lake_results)} | Providers: {sorted(set(providers_used))}")
@@ -686,6 +702,33 @@ class FlightPriceScraper:
         return [{"source": "flights", "count": result["flights"], "lake": True}]
 
 
+_IATA_RE = re.compile(r"[A-Z]{3}")
+
+
+def parse_routes(text: str) -> list[tuple[str, str]]:
+    """Parse ``BKK-NRT,bkk-icn`` into unique ``(ORIGIN, DEST)`` IATA pairs.
+
+    Raises ``ValueError`` for malformed pairs, non-IATA codes, identical
+    origin/destination, or an empty list.
+    """
+    routes: list[tuple[str, str]] = []
+    for part in str(text or "").split(","):
+        part = part.strip().upper()
+        if not part:
+            continue
+        origin, sep, dest = part.partition("-")
+        origin, dest = origin.strip(), dest.strip()
+        if not sep or not _IATA_RE.fullmatch(origin) or not _IATA_RE.fullmatch(dest):
+            raise ValueError(f"invalid route {part!r}: expected ORIGIN-DEST IATA codes, e.g. BKK-NRT")
+        if origin == dest:
+            raise ValueError(f"invalid route {part!r}: origin and destination are the same")
+        if (origin, dest) not in routes:
+            routes.append((origin, dest))
+    if not routes:
+        raise ValueError("no routes given")
+    return routes
+
+
 def _cli_main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         description="Scrape flight prices (lake-first multi-provider)"
@@ -719,15 +762,21 @@ def _cli_main(argv: Optional[list[str]] = None) -> int:
         print("  No upstream providers contacted; no lake write.")
         return 0
 
+    if args.days_ahead < 1:
+        parser.error("--days-ahead must be >= 1")
+    if not math.isfinite(args.alert_drop_pct) or args.alert_drop_pct < 0:
+        parser.error("--alert-drop-pct must be a finite, non-negative number")
     routes = None
-    if args.routes:
-        routes = args.routes
-    elif args.destinations:
-        routes = [
-            (args.origin, d.strip())
-            for d in args.destinations.split(",")
-            if d.strip()
-        ]
+    try:
+        if args.routes:
+            routes = parse_routes(args.routes)
+        elif args.destinations:
+            origin = args.origin.strip().upper()
+            routes = parse_routes(
+                ",".join(f"{origin}-{d.strip()}" for d in args.destinations.split(",") if d.strip())
+            )
+    except ValueError as exc:
+        parser.error(str(exc))
 
     try:
         main(
