@@ -107,7 +107,6 @@ class StoreLakeTests(unittest.TestCase):
             )
             # prices + history per provider
             self.assertGreaterEqual(len(results), 2)
-            raw_keys = [r["raw_key"] for r in results if "flight_prices" in r.get("bronze_key", "") or "prices" in str(r)]
             # At least two distinct landings with provider segments
             price_landings = [
                 r["raw_key"]
