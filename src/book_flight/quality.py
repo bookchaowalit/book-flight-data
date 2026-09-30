@@ -20,7 +20,10 @@ def finite_number(value: Any) -> Optional[float]:
     if value is None or isinstance(value, bool):
         return None
     if isinstance(value, (int, float)):
-        number = float(value)
+        try:
+            number = float(value)
+        except OverflowError:  # an int beyond float range (JSON allows 1e400 digits)
+            return None
     elif isinstance(value, str):
         text = value.strip()
         if not text:

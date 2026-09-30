@@ -15,6 +15,18 @@ Score: 8/10 -> 8.5/10 — every provider capture shape is parsed from saved fixt
 - P2: `load_previous_prices` keeps the last history row per route; compare against the
   cheapest fare of the previous run instead.
 
+## Done in this pass (pass 4: edge cases)
+
+- `config.env_bool` returned False for anything but a true-ish word, so
+  `FREE_ONLY=` (blank line in .env/compose) or a typo silently disabled the
+  free-only guard (and with it the paid Firecrawl/experimental HTML gates);
+  blank/unrecognised values now keep the safe default.
+- `quality.finite_number` raised `OverflowError` for a JSON integer beyond
+  float range (a Tequila `price`/`dTime`), crashing `valid_price` and
+  `_tequila_time`; it now returns `None`.
+- Verified: `tests/test_edge_cases.py` (all 3 fail on the old code); full
+  suite 43 passed; ruff 0.15.8 + 0.16.9.
+
 ## Done in this pass (pass 3)
 
 - Saved captures in `tests/pages/` drive `tests/test_provider_parsers.py`: Tequila JSON
