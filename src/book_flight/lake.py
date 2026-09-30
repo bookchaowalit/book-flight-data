@@ -7,6 +7,7 @@ raw object. HTML landings use input_format=html so exact bytes stay intact.
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import re
 import sys
 from pathlib import Path
@@ -88,6 +89,21 @@ def find_solo_empire_root(start: Optional[Path] = None) -> Optional[Path]:
         start or config.PROJECT_ROOT,
         solo_empire_root=config.SOLO_EMPIRE_ROOT,
     )
+
+
+def shared_runtime_available() -> bool:
+    """Return True when the shared ``data_lake`` runtime can be imported.
+
+    Covers the installed ``[lake]`` extra (``solo-empire-data-lake``) and the
+    ``SOLO_EMPIRE_ROOT`` / parent-checkout fallback used inside Solo Empire.
+    """
+    if importlib.util.find_spec("data_lake") is not None:
+        return True
+    try:
+        _pa_mod()
+    except ImportError:
+        return False
+    return True
 
 
 def default_data_lake_uri(solo_root: Optional[Path] = None) -> str:

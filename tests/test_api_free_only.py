@@ -79,10 +79,13 @@ def _lake_deps_available() -> bool:
         import pyarrow  # noqa: F401
     except ImportError:
         return False
-    return lake.find_solo_empire_root() is not None
+    return lake.shared_runtime_available()
 
 
-@unittest.skipUnless(_lake_deps_available(), "pyarrow/duckdb + monorepo required")
+@unittest.skipUnless(
+    _lake_deps_available(),
+    "pyarrow/duckdb + shared data_lake runtime required (pip install -e .[lake])",
+)
 class StoreLakeTests(unittest.TestCase):
     def test_multi_provider_landing_not_merged(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -240,7 +243,10 @@ class PolicyTests(unittest.TestCase):
             self.assertTrue(policy.evaluate_provider("offline_fixtures").allowed)
 
 
-@unittest.skipUnless(_lake_deps_available(), "pyarrow/duckdb + monorepo required")
+@unittest.skipUnless(
+    _lake_deps_available(),
+    "pyarrow/duckdb + shared data_lake runtime required (pip install -e .[lake])",
+)
 class ApiContractTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
