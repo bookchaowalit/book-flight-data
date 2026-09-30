@@ -314,7 +314,9 @@ def fetch_firecrawl_raw(
 
 
 def _projection_timestamp() -> str:
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # UTC: readers (product_store.parse_ts / _freshness) treat naive stamps as
+    # UTC, so a host-local stamp looked hours fresher (or older) than it was.
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def _projection_rows(flights: list[dict], fieldnames: list[str], scraped: str) -> list[dict]:
