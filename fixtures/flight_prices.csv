@@ -1,3 +1,3 @@
-origin,destination,price_thb,airline,departure,return,duration_hours,stops,url,source,scraped_at
-BKK,SIN,3500,TG,2026-09-01 10:00,,2.5,0,https://example.com/bkk-sin,fixture,2026-08-01 12:00:00
-BKK,TYO,8900,JL,2026-09-05 22:00,,6.0,0,https://example.com/bkk-tyo,fixture,2026-08-01 12:00:00
+origin,destination,price_thb,airline,departure,return,duration_hours,stops,url,source,provider,departure_date,observed_at,currency,scraped_at
+BKK,SIN,3500,TG,2026-09-01 10:00,,2.5,0,https://example.com/bkk-sin,fixture,fixture,2026-09-01,2026-08-01 12:00:00,THB,2026-08-01 12:00:00
+BKK,TYO,8900,JL,2026-09-05 22:00,,6.0,0,https://example.com/bkk-tyo,fixture,fixture,2026-09-05,2026-08-01 12:00:00,THB,2026-08-01 12:00:00

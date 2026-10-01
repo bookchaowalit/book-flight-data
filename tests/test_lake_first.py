@@ -1,7 +1,6 @@
 """Lake-first multi-provider tests for book-flight-data."""
 from __future__ import annotations
 
-import json
 import sys
 import tempfile
 import unittest
@@ -28,7 +27,16 @@ SAMPLE = {
 }
 
 
+
+def _shared_adapter_available() -> bool:
+    return lake.shared_runtime_available()
+
+
 class IdentityTests(unittest.TestCase):
+    @unittest.skipUnless(
+        _shared_adapter_available(),
+        "shared data_lake runtime not installed (pip install -e .[lake])",
+    )
     def test_stable_id_includes_route_date_provider_itinerary(self):
         rec = lake.normalize_flight_record(SAMPLE, provider="kiwi_tequila")
         self.assertEqual(rec["provider"], "kiwi_tequila")
@@ -76,6 +84,7 @@ class OrderingTests(unittest.TestCase):
                         run_live_ingest(
                             routes=[("BKK", "SIN")],
                             output_dir=out,
+                            data_lake_uri=str(out / "lake"),
                             write_history=False,
                             project_csv=True,
                         )
@@ -83,8 +92,8 @@ class OrderingTests(unittest.TestCase):
 
 
 @unittest.skipUnless(
-    lake.find_solo_empire_root() is not None,
-    "monorepo data_lake required",
+    lake.shared_runtime_available(),
+    "shared data_lake runtime not installed (pip install -e .[lake])",
 )
 class RealLakeTests(unittest.TestCase):
     def test_per_provider_landing_and_html_bytes(self):

@@ -1,0 +1,10 @@
+{"currency": "THB", "data": [
+  {"id": "0f1a", "price": 12450, "dTime": 1788775200, "aTime": 1788798000, "fly_duration": 22800,
+   "deep_link": "https://www.kiwi.com/deep?booking=0f1a",
+   "route": [{"airline": "TG"}, {"airline": "NH"}, {"airline": "TG"}]},
+  {"id": "0f1b", "price": 9800, "dTime": 1788861600, "aTime": 1788880800, "fly_duration": 19200,
+   "deep_link": "https://www.kiwi.com/deep?booking=0f1b",
+   "route": [{"airline": "XJ"}]},
+  {"id": "bad-price", "price": -1, "route": [{"airline": "ZZ"}]},
+  "not-an-object"
+]}

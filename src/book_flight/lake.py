@@ -7,18 +7,23 @@ raw object. HTML landings use input_format=html so exact bytes stay intact.
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import re
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
 from . import config
+from . import quality
 
 
 def _load_shared():
     cur = config.PROJECT_ROOT.resolve()
-    for parent in [cur, *cur.parents]:
+    candidates = [cur, *cur.parents]
+    if config.SOLO_EMPIRE_ROOT:
+        # Explicit parent checkout (e.g. sibling clone) wins over the walk.
+        candidates.insert(0, Path(config.SOLO_EMPIRE_ROOT).expanduser().resolve())
+    for parent in candidates:
         scripts = parent / "infra" / "scripts"
         if (scripts / "data_lake" / "product_adapter.py").is_file():
             if str(scripts) not in sys.path:
@@ -76,10 +81,30 @@ def utc_now_iso() -> str:
 
 
 def find_solo_empire_root(start: Optional[Path] = None) -> Optional[Path]:
-    return _pa_mod().find_solo_empire_root(
+    """Return the Solo Empire root, or ``None`` when the shared adapter is absent."""
+    try:
+        pa = _pa_mod()
+    except ImportError:
+        return None
+    return pa.find_solo_empire_root(
         start or config.PROJECT_ROOT,
         solo_empire_root=config.SOLO_EMPIRE_ROOT,
     )
+
+
+def shared_runtime_available() -> bool:
+    """Return True when the shared ``data_lake`` runtime can be imported.
+
+    Covers the installed ``[lake]`` extra (``solo-empire-data-lake``) and the
+    ``SOLO_EMPIRE_ROOT`` / parent-checkout fallback used inside Solo Empire.
+    """
+    if importlib.util.find_spec("data_lake") is not None:
+        return True
+    try:
+        _pa_mod()
+    except ImportError:
+        return False
+    return True
 
 
 def default_data_lake_uri(solo_root: Optional[Path] = None) -> str:
@@ -142,6 +167,13 @@ def stable_flight_id(
     return ":".join(parts)
 
 
+def _non_negative_or_blank(value: Any) -> Any:
+    """Keep finite non-negative numbers as given; blank NaN/inf/negative/text."""
+    if value in ("", None):
+        return value
+    return value if quality.non_negative_number(value) is not None else ""
+
+
 def normalize_flight_record(
     flight: dict[str, Any],
     *,
@@ -192,8 +224,8 @@ def normalize_flight_record(
         "price": price,
         "price_thb": price,
         "currency": str(flight.get("currency") or currency),
-        "duration_hours": flight.get("duration_hours", 0),
-        "stops": flight.get("stops", 0),
+        "duration_hours": _non_negative_or_blank(flight.get("duration_hours", 0)),
+        "stops": _non_negative_or_blank(flight.get("stops", 0)),
         "url": str(flight.get("url") or ""),
         "itinerary_id": itin,
         "source_label": str(flight.get("source") or provider),
@@ -222,6 +254,10 @@ def flight_records_from_provider(
             flight, provider=provider, observed_at=observed, currency=currency
         )
         if not rec["origin"] or not rec["destination"]:
+            continue
+        # A fare must be a finite, positive number (NaN/inf/0/negative/text dropped).
+        price = quality.finite_number(rec["price"])
+        if price is None or price <= 0:
             continue
         rid = rec["id"]
         if dedupe:

@@ -6,7 +6,6 @@ Breaking changes require a new schema_version (e.g. flight.v2).
 """
 from __future__ import annotations
 
-import re
 import unittest
 from pathlib import Path
 
@@ -17,6 +16,14 @@ from book_flight.store import envelope
 ENVELOPE_KEYS = ['schema_version', 'source', 'retrieved_at', 'data_status', 'items', 'next_cursor']
 FROZEN_PORT = 8105
 FROZEN_SCHEMA = 'flight.v1'
+
+
+def _shared_runtime_available():
+    try:
+        envelope(items=[], data_status="empty")
+    except (ImportError, ModuleNotFoundError):
+        return False
+    return True
 
 
 class ContractFreezeTests(unittest.TestCase):
@@ -32,6 +39,10 @@ class ContractFreezeTests(unittest.TestCase):
         self.assertFalse(config.ALLOW_EXTERNAL_WRITES)
         self.assertFalse(config.ALLOW_REFRESH)
 
+    @unittest.skipUnless(
+        _shared_runtime_available(),
+        "shared data_lake runtime not installed (pip install -e .[lake])",
+    )
     def test_envelope_required_keys(self):
         body = envelope(items=[], data_status="empty")
         for key in ENVELOPE_KEYS:

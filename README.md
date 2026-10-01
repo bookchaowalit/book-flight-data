@@ -49,7 +49,10 @@ Policy is enforced **before** any network call.
 
 ```bash
 pip install -e .
-pip install -r <solo-empire>/infra/requirements-data-lake.txt
+# Lake writes need the shared data-lake runtime: the [lake] extra installs the
+# pinned solo-empire-data-lake (plus pyarrow/duckdb); inside Solo Empire the
+# parent checkout's infra/scripts/data_lake is used instead
+pip install -e ".[lake]"
 
 # Offline (recommended free-only)
 python -m book_flight.ingest --fixture
@@ -69,10 +72,38 @@ python -m book_flight.api --host 127.0.0.1 --port 8105
 | GET | `/v1/history` | History Bronze |
 | POST | `/v1/refresh` | 403 by default |
 
+## Data quality
+
+- Fares must be finite and positive (`ingest.valid_price`); `NaN` is truthy,
+  so the old `if price` check let it through. Bronze records without a valid
+  fare are dropped, and `NaN`/negative `duration_hours`/`stops` are blanked.
+- Tequila times are rendered with UTC arithmetic (the API encodes airport-local
+  wall time as epoch seconds) and airlines are sorted, so itinerary ids are
+  stable across processes.
+- Price alerts compare with the history from *before* the current run.
+- `--routes`/`--destinations` must be `ORIGIN-DEST` IATA pairs (upper-cased,
+  de-duplicated, origin != destination); `--days-ahead` >= 1 and
+  `--alert-drop-pct` finite and >= 0 (exit 2 otherwise).
+- CSV projections are written atomically (temp file + `os.replace`).
+- Parsers are tested offline from `tests/pages/` (Tequila JSON, Firecrawl
+  markdown JSON, Skyscanner HTML).
+
 ## Tests
 
 ```bash
-PYTHONPATH=src /path/to/solo-empire/.venv/bin/python -m unittest discover -s tests -v
+# What CI runs: the [lake] extra installs the pinned solo-empire-data-lake
+# runtime (plus pyarrow/duckdb), so Bronze/Silver lake tests run standalone
+python -m pip install -e ".[lake]" pytest ruff
+ruff check .
+python -m pytest -q -rs
+
+# Contract/policy only: without the extra, lake tests skip with a reason
+python -m pip install -e . pytest
+python -m pytest -q -rs
+
+# Inside Solo Empire: SOLO_EMPIRE_ROOT (or walking parents) makes the parent
+# checkout's infra/scripts/data_lake take precedence over the installed runtime
+SOLO_EMPIRE_ROOT=/path/to/solo-empire python -m pytest -q
 ```
 
 Shared modules: `product_adapter.py`, `product_store.py`. HTML format support in
