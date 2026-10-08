@@ -1,0 +1,8 @@
+system_id: bookchaowalit/book-products/book-flight-data
+prefix: CARD
+brand: "BOOK FLIGHT DATA"
+subtitle: "ต้นแบบข้อมูลราคาตั๋วเครื่องบินหลายผู้ให้บริการ แบบ lake-first"
+footer: "Book Flight Data — Product Card"
+color: "#2f4b6e"
+audience: internal
+tier: L0
