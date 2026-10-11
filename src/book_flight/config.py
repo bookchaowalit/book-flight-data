@@ -68,7 +68,7 @@ DATA_LAKE_URI = os.environ.get(
     "SOLO_EMPIRE_DATA_LAKE_URI",
     os.environ.get("DATA_LAKE_URI", ""),
 )
-SOLO_EMPIRE_ROOT = os.environ.get("SOLO_EMPIRE_ROOT", "")
+SOLO_DATA_LAKE_ROOT = os.environ.get("SOLO_DATA_LAKE_ROOT", "")
 LAKE_READ_MODE = os.environ.get("LAKE_READ_MODE", "parquet").strip().lower()
 LAKE_READ_FALLBACK = os.environ.get("LAKE_READ_FALLBACK", "error").strip().lower()
 TEQUILA_API_KEY = os.environ.get("TEQUILA_API_KEY", "")

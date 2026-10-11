@@ -210,11 +210,6 @@ class SharedAdapterTests(unittest.TestCase):
         self.assertEqual(config.LAKE_DOMAIN, "travel")
         self.assertEqual(config.LAKE_DATASET_PRICES, "flight_prices")
         self.assertEqual(config.SCHEMA_VERSION, "flight.v1")
-        root = lake.find_solo_empire_root()
-        if root:
-            self.assertTrue(
-                (root / "infra" / "scripts" / "data_lake" / "product_adapter.py").is_file()
-            )
 
 
 if __name__ == "__main__":
