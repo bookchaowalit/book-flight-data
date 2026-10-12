@@ -63,7 +63,7 @@ Score: 8/10 -> 8.5/10 — every provider capture shape is parsed from saved fixt
 - `tests/test_fixture_headers.py` pins `fixtures/*.csv` headers to the CSV projection;
   the fixtures had drifted (missing `provider`, `departure_date`, `observed_at`, `currency`) and were refreshed.
 - Verified: fresh venv `pip install -e ".[lake]"` from the pinned tarball — 0 skipped of 25 with `[lake]` (was 12 of 24 skipped);
-  also against `pip install /home/user/solo-empire-data-lake`, with `SOLO_DATA_LAKE_ROOT=<solo-data-lake>`
+  also against `pip install /home/user/solo-empire-data-lake`, with `SOLO_DATA_LAKE_ROOT=<data-lake>`
   (parent adapter wins), and without the extra (lake tests skip with a reason). ruff 0.15 and 0.16 clean.
 
 ## Done in pass 1
@@ -77,6 +77,6 @@ Score: 8/10 -> 8.5/10 — every provider capture shape is parsed from saved fixt
 - Fixed the remaining default-rule ruff findings; `.gitignore` covers egg-info/ruff cache.
 - README "Tests" section documents the standalone and full-lake commands.
 - Verified: clean venv with `pip install -e . pytest` (CI shape) and a full run with
-  `SOLO_DATA_LAKE_ROOT=<solo-data-lake>` + pyarrow/duckdb (all lake tests execute and pass).
+  `SOLO_DATA_LAKE_ROOT=<data-lake>` + pyarrow/duckdb (all lake tests execute and pass).
 - The fail-closed ingest test passes an explicit temporary lake URI and runs standalone;
   the stable-id test skips cleanly without the adapter.
