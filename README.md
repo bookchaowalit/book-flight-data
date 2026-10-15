@@ -2,6 +2,9 @@
 
 Flight price data product — **multi-provider lake-first pilot**.
 
+Live collection remains **blocked** pending provider/terms/budget approval.
+See the [2026-10-15 provider and budget decision packet](docs/PROVIDER-BUDGET-DECISION-2026-10-15.md); it is a draft, not activation authority.
+
 Migration status: lake-first via shared `data_lake.product_adapter`. Each
 provider response is landed separately before any merge. HTML landings keep
 exact bytes; Bronze rows hold structured fields + `raw_object_key`.
