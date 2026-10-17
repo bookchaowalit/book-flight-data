@@ -1,4 +1,5 @@
 """Edge-case regressions: overflowing numbers and env flags."""
+
 from __future__ import annotations
 
 import json

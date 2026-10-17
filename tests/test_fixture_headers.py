@@ -3,6 +3,7 @@
 ``--offline`` seeds ``fixtures/*.csv`` into ``data/``; if a projection gains a
 column the fixture silently drifts from what a real run writes.
 """
+
 from __future__ import annotations
 
 import contextlib

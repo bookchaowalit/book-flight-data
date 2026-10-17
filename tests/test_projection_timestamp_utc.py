@@ -1,4 +1,5 @@
 """CSV projection stamps must be UTC: product_store reads naive stamps as UTC."""
+
 from __future__ import annotations
 
 import os
@@ -23,7 +24,9 @@ class ProjectionTimestampUtcTests(unittest.TestCase):
             else:
                 os.environ["TZ"] = old
             time.tzset()
-        parsed = datetime.strptime(stamp, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+        parsed = datetime.strptime(stamp, "%Y-%m-%d %H:%M:%S").replace(
+            tzinfo=timezone.utc
+        )
         drift = abs((datetime.now(timezone.utc) - parsed).total_seconds())
         self.assertLess(drift, 300, f"projection stamp {stamp!r} is not UTC")
 

@@ -1,4 +1,5 @@
 """Bounded free-only HTTP helper with timeout/429 handling."""
+
 from __future__ import annotations
 
 import time
@@ -14,7 +15,9 @@ except ImportError:  # pragma: no cover - exercised in missing-dep environments
 
 
 class UpstreamError(Exception):
-    def __init__(self, message: str, *, status_code: int | None = None, kind: str = "error"):
+    def __init__(
+        self, message: str, *, status_code: int | None = None, kind: str = "error"
+    ):
         super().__init__(message)
         self.status_code = status_code
         self.kind = kind
@@ -22,7 +25,9 @@ class UpstreamError(Exception):
 
 def ensure_httpx() -> Any:
     if httpx is None:
-        raise UpstreamError("httpx is not installed; install with: pip install httpx", kind="dependency")
+        raise UpstreamError(
+            "httpx is not installed; install with: pip install httpx", kind="dependency"
+        )
     return httpx
 
 
@@ -60,14 +65,20 @@ def request_json(
                 kwargs["json"] = json_body
             if transport is not None:
                 with client_mod.Client(transport=transport, timeout=timeout) as client:
-                    resp = client.request(**{k: v for k, v in kwargs.items() if k != "timeout"})
+                    resp = client.request(
+                        **{k: v for k, v in kwargs.items() if k != "timeout"}
+                    )
             else:
                 resp = client_mod.request(**kwargs)
 
             if resp.status_code == 429:
                 if attempt >= config.MAX_RETRIES:
-                    raise UpstreamError("Upstream rate limited (HTTP 429)", status_code=429, kind="rate_limit")
-                sleep(min(2 ** attempt, 8))
+                    raise UpstreamError(
+                        "Upstream rate limited (HTTP 429)",
+                        status_code=429,
+                        kind="rate_limit",
+                    )
+                sleep(min(2**attempt, 8))
                 continue
 
             if resp.status_code >= 400:
@@ -79,7 +90,9 @@ def request_json(
 
             content = resp.content
             if len(content) > config.MAX_RESPONSE_BYTES:
-                raise UpstreamError("Upstream response exceeded size limit", kind="size_limit")
+                raise UpstreamError(
+                    "Upstream response exceeded size limit", kind="size_limit"
+                )
             return resp.json()
         except UpstreamError:
             raise
@@ -89,9 +102,13 @@ def request_json(
             msg = str(exc).lower()
             if "timeout" in name or "timeout" in msg:
                 if attempt >= config.MAX_RETRIES:
-                    raise UpstreamError("Upstream request timed out", kind="timeout") from exc
-                sleep(min(2 ** attempt, 8))
+                    raise UpstreamError(
+                        "Upstream request timed out", kind="timeout"
+                    ) from exc
+                sleep(min(2**attempt, 8))
                 continue
-            raise UpstreamError(f"Upstream request failed: {exc}", kind="network") from exc
+            raise UpstreamError(
+                f"Upstream request failed: {exc}", kind="network"
+            ) from exc
 
     raise UpstreamError(f"Upstream request failed: {last_error}", kind="network")

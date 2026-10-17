@@ -1,4 +1,5 @@
 """Lake-first multi-provider tests for book-flight-data."""
+
 from __future__ import annotations
 
 import sys
@@ -25,7 +26,6 @@ SAMPLE = {
     "source": "Kiwi.com",
     "currency": "THB",
 }
-
 
 
 def _shared_adapter_available() -> bool:
@@ -79,7 +79,9 @@ class OrderingTests(unittest.TestCase):
                     }
                 ],
             ):
-                with mock.patch.object(lake, "ingest_provider_payload", side_effect=boom):
+                with mock.patch.object(
+                    lake, "ingest_provider_payload", side_effect=boom
+                ):
                     with self.assertRaises(lake.LakeIngestError):
                         run_live_ingest(
                             routes=[("BKK", "SIN")],
@@ -134,7 +136,9 @@ class RealLakeTests(unittest.TestCase):
             )
             # Find HTML landing
             html_landings = [
-                r for r in results if r["raw_key"].endswith(".html") or "html" in r["raw_key"]
+                r
+                for r in results
+                if r["raw_key"].endswith(".html") or "html" in r["raw_key"]
             ]
             self.assertTrue(html_landings)
             raw_key = html_landings[0]["raw_key"]

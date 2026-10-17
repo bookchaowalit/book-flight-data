@@ -4,6 +4,7 @@ Frozen map is owned by Solo Empire:
   docs/systems/data-product-contracts-v1.yaml
 Breaking changes require a new schema_version (e.g. flight.v2).
 """
+
 from __future__ import annotations
 
 import unittest
@@ -13,9 +14,16 @@ from book_flight import config
 from book_flight.store import envelope
 
 
-ENVELOPE_KEYS = ['schema_version', 'source', 'retrieved_at', 'data_status', 'items', 'next_cursor']
+ENVELOPE_KEYS = [
+    "schema_version",
+    "source",
+    "retrieved_at",
+    "data_status",
+    "items",
+    "next_cursor",
+]
 FROZEN_PORT = 8105
-FROZEN_SCHEMA = 'flight.v1'
+FROZEN_SCHEMA = "flight.v1"
 
 
 def _shared_runtime_available():
@@ -53,9 +61,15 @@ class ContractFreezeTests(unittest.TestCase):
         self.assertIn("next_cursor", body)
 
     def test_api_get_only_surface_and_refresh_forbidden(self):
-        api_src = Path(__file__).resolve().parents[1] / "src" / 'book_flight' / "api.py"
+        api_src = Path(__file__).resolve().parents[1] / "src" / "book_flight" / "api.py"
         text = api_src.read_text(encoding="utf-8")
-        for path in ("/healthz", "/v1/metadata", "/v1/records", "/v1/history", "/v1/refresh"):
+        for path in (
+            "/healthz",
+            "/v1/metadata",
+            "/v1/records",
+            "/v1/history",
+            "/v1/refresh",
+        ):
             self.assertIn(path, text)
         self.assertIn("def do_GET", text)
         self.assertIn("def do_POST", text)

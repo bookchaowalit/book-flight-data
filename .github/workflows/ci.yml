@@ -1,42 +1,38 @@
+# CI + security baseline (DevSecOps Phase 1). Public repository: GitHub-hosted runners.
+# Replaces the previous standalone CI workflow (Ruff + pytest + CLI smoke checks), which this duplicates.
 name: CI
 
 on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
-
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    env:
-      FREE_ONLY: "true"
-      ALLOW_PAID_PROVIDERS: "false"
-      ALLOW_EXTERNAL_WRITES: "false"
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-      - name: Install package with the pinned shared lake runtime
-        run: python -m pip install -e ".[lake]" pytest ruff
-      - name: Check shared lake runtime is importable
-        run: python -c "import data_lake.product_adapter, data_lake.silver"
-      - name: Lint
-        run: ruff check .
-      # The [lake] extra installs solo-empire-data-lake, so Bronze/Silver lake
-      # tests run here instead of skipping; -rs keeps any remaining skips visible.
-      - name: Tests (standalone, including lake integration)
-        run: python -m pytest -q -rs
-      - run: python -m compileall -q src
-      - run: python -m book_flight.ingest --help
-      - run: book-flight-data --help
+  data:
+    uses: bookchaowalit/platform-ci-workflows/.github/workflows/ci-python.yml@c37ef9d113eefb3ed45429717cb7ca201192c3fc # v1.0.1
+    with:
+      python-version: "3.12" # matches the previous CI
+      # The [lake] extra installs the pinned solo-empire-data-lake runtime so the Bronze/Silver lake
+      # tests run instead of skipping.
+      install-command: uv pip install -e ".[lake]" "pytest==9.1.1"
+      # Same checks as the previous CI: lake runtime importable, offline tests (-rs keeps skips
+      # visible), byte-compile, CLI entry points. The guard variables the previous CI set keep
+      # paid providers and external writes off.
+      test-command: >-
+        export FREE_ONLY=true ALLOW_PAID_PROVIDERS=false ALLOW_EXTERNAL_WRITES=false &&
+        python -c "import data_lake.product_adapter, data_lake.silver" &&
+        python -m pytest -q -rs &&
+        python -m compileall -q src &&
+        python -m book_flight.ingest --help &&
+        book-flight-data --help
+
+  security:
+    uses: bookchaowalit/platform-ci-workflows/.github/workflows/security.yml@c37ef9d113eefb3ed45429717cb7ca201192c3fc # v1.0.1

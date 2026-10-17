@@ -5,6 +5,7 @@ them), non-numeric strings, negative values where only non-negative ones make
 sense, and duplicate identifiers. These helpers let the normalizers drop or
 blank such values explicitly instead of persisting them.
 """
+
 from __future__ import annotations
 
 import math
@@ -65,4 +66,6 @@ def dedupe_by_key(
 
 def summarize_rejections(rejected: Iterable[dict[str, Any]]) -> dict[str, int]:
     """Count rejected rows by their ``reason`` field."""
-    return dict(sorted(Counter(str(r.get("reason", "unknown")) for r in rejected).items()))
+    return dict(
+        sorted(Counter(str(r.get("reason", "unknown")) for r in rejected).items())
+    )
