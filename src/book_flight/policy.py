@@ -1,4 +1,5 @@
 """Free-only provider policy for book-flight-data."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -8,11 +9,26 @@ from . import config
 
 
 PROVIDERS: dict[str, dict[str, str]] = {
-    'offline_fixtures': {'status': 'free', 'reason': 'Local fixture/normalized data only'},
-    'public_html_experimental': {'status': 'unknown', 'reason': 'Public HTML scraping is experimental; terms must be reviewed'},
-    'kiwi_tequila': {'status': 'blocked', 'reason': 'Kiwi/Tequila production API requires key and is not free-default'},
-    'firecrawl': {'status': 'blocked', 'reason': 'Firecrawl is paid/optional and disabled by free-only policy'},
-    'brave_search_api': {'status': 'blocked', 'reason': 'Brave Search API paid path disabled'},
+    "offline_fixtures": {
+        "status": "free",
+        "reason": "Local fixture/normalized data only",
+    },
+    "public_html_experimental": {
+        "status": "unknown",
+        "reason": "Public HTML scraping is experimental; terms must be reviewed",
+    },
+    "kiwi_tequila": {
+        "status": "blocked",
+        "reason": "Kiwi/Tequila production API requires key and is not free-default",
+    },
+    "firecrawl": {
+        "status": "blocked",
+        "reason": "Firecrawl is paid/optional and disabled by free-only policy",
+    },
+    "brave_search_api": {
+        "status": "blocked",
+        "reason": "Brave Search API paid path disabled",
+    },
 }
 
 

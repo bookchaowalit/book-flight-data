@@ -1,4 +1,5 @@
 """Offline tests for book-flight-data free-only API + multi-provider lake."""
+
 from __future__ import annotations
 
 import json
@@ -114,12 +115,13 @@ class StoreLakeTests(unittest.TestCase):
             price_landings = [
                 r["raw_key"]
                 for r in results
-                if r["raw_key"].startswith("landing/")
-                and "provider=" in r["raw_key"]
+                if r["raw_key"].startswith("landing/") and "provider=" in r["raw_key"]
             ]
             self.assertGreaterEqual(len(set(price_landings)), 2)
             self.assertTrue(any("kiwi" in k for k in price_landings))
-            self.assertTrue(any("public-html" in k or "html" in k for k in price_landings))
+            self.assertTrue(
+                any("public-html" in k or "html" in k for k in price_landings)
+            )
 
             with _set_lake_uri(lake_uri):
                 payload = load_records()
@@ -168,9 +170,13 @@ class StoreLakeTests(unittest.TestCase):
             with _set_lake_uri(lake_uri), _set_read_mode("parquet"):
                 expected_prices = load_records()
                 expected_history = load_history()
-            with _set_lake_uri(lake_uri), _set_read_mode("iceberg"), mock.patch(
-                "data_lake.product_store.read_iceberg_rows",
-                side_effect=read_catalog_rows,
+            with (
+                _set_lake_uri(lake_uri),
+                _set_read_mode("iceberg"),
+                mock.patch(
+                    "data_lake.product_store.read_iceberg_rows",
+                    side_effect=read_catalog_rows,
+                ),
             ):
                 actual_prices = load_records()
                 actual_history = load_history()
@@ -194,9 +200,13 @@ class StoreLakeTests(unittest.TestCase):
                 ],
                 data_lake_uri=lake_uri,
             )
-            with _set_lake_uri(lake_uri), _set_read_mode("iceberg", "parquet"), mock.patch(
-                "data_lake.product_store.read_iceberg_rows",
-                side_effect=lake.LakeUnavailable("catalog unavailable"),
+            with (
+                _set_lake_uri(lake_uri),
+                _set_read_mode("iceberg", "parquet"),
+                mock.patch(
+                    "data_lake.product_store.read_iceberg_rows",
+                    side_effect=lake.LakeUnavailable("catalog unavailable"),
+                ),
             ):
                 payload = load_records()
 
@@ -217,9 +227,13 @@ class StoreLakeTests(unittest.TestCase):
                 ],
                 data_lake_uri=lake_uri,
             )
-            with _set_lake_uri(lake_uri), _set_read_mode("iceberg", "error"), mock.patch(
-                "data_lake.product_store.read_iceberg_rows",
-                side_effect=lake.LakeUnavailable("catalog credentials unavailable"),
+            with (
+                _set_lake_uri(lake_uri),
+                _set_read_mode("iceberg", "error"),
+                mock.patch(
+                    "data_lake.product_store.read_iceberg_rows",
+                    side_effect=lake.LakeUnavailable("catalog credentials unavailable"),
+                ),
             ):
                 payload = load_records()
 
@@ -231,8 +245,9 @@ class StoreLakeTests(unittest.TestCase):
 
 class PolicyTests(unittest.TestCase):
     def test_kiwi_blocked_free_only(self):
-        with mock.patch.object(config, "FREE_ONLY", True), mock.patch.object(
-            config, "ALLOW_PAID_PROVIDERS", False
+        with (
+            mock.patch.object(config, "FREE_ONLY", True),
+            mock.patch.object(config, "ALLOW_PAID_PROVIDERS", False),
         ):
             self.assertFalse(policy.evaluate_provider("kiwi_tequila").allowed)
             self.assertFalse(policy.evaluate_provider("firecrawl").allowed)
@@ -304,13 +319,14 @@ class ApiContractTests(unittest.TestCase):
 
     def test_metadata_reports_iceberg_mode(self):
         def read_catalog_rows(contract, dataset, *, data_lake_uri=None, sql=None):
-            return lake.read_bronze_rows(
-                dataset, data_lake_uri=data_lake_uri, sql=sql
-            )
+            return lake.read_bronze_rows(dataset, data_lake_uri=data_lake_uri, sql=sql)
 
-        with _set_read_mode("iceberg"), mock.patch(
-            "data_lake.product_store.read_iceberg_rows",
-            side_effect=read_catalog_rows,
+        with (
+            _set_read_mode("iceberg"),
+            mock.patch(
+                "data_lake.product_store.read_iceberg_rows",
+                side_effect=read_catalog_rows,
+            ),
         ):
             status, body = self._get("/v1/metadata")
 

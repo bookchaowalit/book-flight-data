@@ -4,6 +4,7 @@ Each provider response is landed separately (no merge before landing). Bronze
 rows keep structured flight fields plus pointer/checksum to that provider's
 raw object. HTML landings use input_format=html so exact bytes stay intact.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -24,7 +25,11 @@ def _load_shared():
     Falls back to a data-lake checkout named by ``SOLO_DATA_LAKE_ROOT``.
     """
     if importlib.util.find_spec("data_lake") is None and config.SOLO_DATA_LAKE_ROOT:
-        scripts = Path(config.SOLO_DATA_LAKE_ROOT).expanduser().resolve() / "infra" / "scripts"
+        scripts = (
+            Path(config.SOLO_DATA_LAKE_ROOT).expanduser().resolve()
+            / "infra"
+            / "scripts"
+        )
         if not (scripts / "data_lake" / "product_adapter.py").is_file():
             raise ImportError(
                 f"SOLO_DATA_LAKE_ROOT={config.SOLO_DATA_LAKE_ROOT} has no "
@@ -186,7 +191,9 @@ def normalize_flight_record(
     origin = str(flight.get("origin") or "").strip().upper()
     destination = str(flight.get("destination") or "").strip().upper()
     departure = str(flight.get("departure") or flight.get("departure_date") or "")
-    departure_date = departure[:10] if departure else str(flight.get("departure_date") or "")
+    departure_date = (
+        departure[:10] if departure else str(flight.get("departure_date") or "")
+    )
     airline = str(flight.get("airline") or "")
     return_at = str(flight.get("return") or flight.get("return_at") or "")
     price = flight.get("price_thb", flight.get("price", ""))

@@ -5,6 +5,7 @@ content goes to a temporary file in the same directory, is flushed and
 fsynced, and then replaces the target with ``os.replace`` (atomic on POSIX
 and Windows for same-filesystem paths).
 """
+
 from __future__ import annotations
 
 import csv
@@ -18,7 +19,9 @@ from typing import Any, Iterable, Sequence
 def atomic_write_text(path: Path, text: str, *, encoding: str = "utf-8") -> Path:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    fd, tmp_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
+    )
     try:
         with os.fdopen(fd, "w", encoding=encoding, newline="") as handle:
             handle.write(text)

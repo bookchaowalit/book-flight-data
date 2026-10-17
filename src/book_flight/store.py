@@ -1,4 +1,5 @@
 """Read-only store for book-flight-data (Bronze via shared product_store)."""
+
 from __future__ import annotations
 
 import json
@@ -19,6 +20,7 @@ def _load_product_store():
                 sys.path.insert(0, str(scripts))
             break
     from data_lake import product_store as ps  # type: ignore
+
     return ps
 
 
@@ -93,7 +95,9 @@ def flight_item_from_bronze(
         "ingest_run_id": str(row.get("ingest_run_id", "")),
         "source_record_id": str(row.get("source_record_id", "")),
         "raw_object_key": str(row.get("raw_object_key", "")),
-        "content_type": str(row.get("content_type") or payload.get("content_type_hint") or ""),
+        "content_type": str(
+            row.get("content_type") or payload.get("content_type_hint") or ""
+        ),
     }
     if history:
         item["record_id"] = make_record_id(item) + f"#h{history_idx}"
@@ -192,7 +196,9 @@ def load_csv_projection(
     data_dir: Optional[Path] = None,
 ) -> dict[str, Any]:
     data_dir = Path(data_dir or config.DATA_DIR)
-    path = data_dir / (config.HISTORY_FILE if kind == "history" else config.RECORDS_FILE)
+    path = data_dir / (
+        config.HISTORY_FILE if kind == "history" else config.RECORDS_FILE
+    )
     return _ps_mod().load_csv_projection(
         path=path,
         id_fields=["origin", "destination"],
