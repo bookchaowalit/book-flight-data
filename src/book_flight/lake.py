@@ -146,6 +146,8 @@ def itinerary_fingerprint(
             str(price or ""),
         ]
     )
+    # SHA-1 only derives a stable record ID (not a security control); changing it would change stored IDs.
+    # nosemgrep: python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1
     return hashlib.sha1(seed.encode("utf-8")).hexdigest()[:12]
 
 
